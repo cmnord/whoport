@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [ "${1:-}" = "" ]; then
+  echo "usage: whoport <port>"
+  exit 1
+fi
+
+port="$1"
+
+# `lsof` lists every open file on the system, with the following filters:
+# -t		terse output: PIDs only, no header
+# -nP		skip DNS resolution and service name lookups
+# -iTCP:$port	only TCP sockets using this port (local or remote)
+# -sTCP:LISTEN	only TCP sockets in listen state
+#
+# `lsof` returns one process per line -- convert to comma-separated with `paste` for `ps`
+pids="$(lsof -t -nP -iTCP:"$port" -sTCP:LISTEN | paste -sd, -)"
+
+if [ "$pids" = "" ]; then
+  echo "nothing listening on $port"
+  exit 1
+fi
+
+# Get process status for these $pids, just the PID and COMMAND columns
+ps -o pid=PID,command=COMMAND -p "$pids"
