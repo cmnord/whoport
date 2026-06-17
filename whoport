@@ -2,26 +2,46 @@
 
 set -euo pipefail
 
-if [ "${1:-}" = "" ]; then
-  echo "usage: whoport <port>"
-  exit 1
-fi
+usage() {
+  cat <<'EOF'
+usage: whoport <port>...
 
-port="$1"
+Show the process(es) listening on one or more TCP ports.
+
+  whoport 3000              one port
+  whoport 3000 8080 5432    several ports
+EOF
+}
+
+case "${1:-}" in
+  -h | --help) usage; exit 0 ;;
+  "") usage >&2; exit 1 ;;
+esac
+
+rows=()
 
 # `lsof` lists every open file on the system, with the following filters:
 # -t		terse output: PIDs only, no header
 # -nP		skip DNS resolution and service name lookups
 # -iTCP:$port	only TCP sockets using this port (local or remote)
 # -sTCP:LISTEN	only TCP sockets in listen state
-#
-# `lsof` returns one process per line -- convert to comma-separated with `paste` for `ps`
-pids="$(lsof -t -nP -iTCP:"$port" -sTCP:LISTEN | paste -sd, -)"
+for port in "$@"; do
+  # one lsof per port so we know which port each PID belongs to
+  pids=$(lsof -t -nP -iTCP:"$port" -sTCP:LISTEN || true)
 
-if [ "$pids" = "" ]; then
-  echo "nothing listening on $port"
+  # PIDs are bare numbers, so word splitting is safe here
+  for pid in $pids; do
+    # `command` is the full command line; `comm` would be just the executable
+    cmd=$(ps -o command= -p "$pid")
+
+    rows+=("$(printf '%-6s %-8s %s' "$port" "$pid" "$cmd")")
+  done
+done
+
+if [ ${#rows[@]} -eq 0 ]; then
+  echo "nothing listening on: $*" >&2
   exit 1
 fi
 
-# Get process status for these $pids, just the PID and COMMAND columns
-ps -o pid=PID,command=COMMAND -p "$pids"
+printf '%-6s %-8s %s\n' PORT PID COMMAND
+printf '%s\n' "${rows[@]}"
