@@ -1,0 +1,36 @@
+/* Styling for the rendered man page served by tools/man-preview.
+   mandoc emits class names like .Sh (section head), .Fl (flag), .Cm (command). */
+
+:root { color-scheme: light dark; }
+
+body {
+  max-width: 46rem;
+  margin: 2rem auto;
+  padding: 0 1.5rem;
+  font: 16px/1.6 -apple-system, system-ui, sans-serif;
+}
+
+/* the NAME(1) ... NAME(1) banners mandoc puts at the top and bottom */
+table.head, table.foot { width: 100%; font-size: .8rem; opacity: .6; }
+table.head { border-bottom: 1px solid; margin-bottom: 2rem; }
+table.foot { border-top: 1px solid; margin-top: 2rem; }
+
+h1.Sh {
+  font-size: .95rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin: 2rem 0 .5rem;
+}
+h1.Sh a { text-decoration: none; color: inherit; }
+
+b, code, .Fl, .Cm { font-family: ui-monospace, Menlo, monospace; }
+
+pre, .Bd {
+  background: rgba(127, 127, 127, .12);
+  padding: .8rem 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-size: .85rem;
+}
+
+dt { margin-top: .8rem; }
