@@ -1,0 +1,24 @@
+#!/bin/sh
+#
+# Rebuild whoport.1 from whoport.1.scd and stage it, so the committed man page
+# can never drift from its source.  Enable with:
+#
+#     git config core.hooksPath .githooks
+#
+# Note: this rebuilds from the working tree, not the index, so a partial commit
+# (git add -p) of the .scd will still produce a fully rebuilt whoport.1.
+
+set -e
+
+[ -f whoport.1.scd ] || exit 0
+
+if ! command -v scdoc >/dev/null; then
+  echo "pre-commit: scdoc not installed, cannot rebuild whoport.1" >&2
+  echo "            brew install scdoc, or commit with --no-verify" >&2
+  exit 1
+fi
+
+# -B forces the rebuild: make compares mtimes at one-second granularity, so an
+# edit and a build landing in the same second would otherwise be a silent no-op
+make -B -s whoport.1
+git add whoport.1
