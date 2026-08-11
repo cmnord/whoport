@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+#
+# Live browser preview of a man page.  usage: tools/man-preview whoport.1
+#
+# Three parts make the loop:
+#   - entr re-renders the HTML whenever the source is saved
+#   - a tiny local HTTP server serves it (fetch() is blocked on file:// URLs)
+#   - man-preview.js polls in the background and swaps <body> in place, so
+#     updates arrive with no navigation: no spinner, no flash, scroll kept
+#
+# The page's stylesheet and script are the sibling files man-preview.css and
+# man-preview.js; both are copied into the served directory at startup.
+
+set -euo pipefail
+
+out=${TMPDIR:-/tmp}/man-preview
+dir=$(cd "$(dirname "$0")" && pwd)
+
+render() {
+  # re-copied every render so edits to the stylesheet or script land too
+  cp "$dir/man-preview.css" "$dir/man-preview.js" "$out/"
+
+  # .scd source is compiled to roff first; a syntax error leaves the previous
+  # page on screen rather than blanking it
+  local page=$1
+  if [ "${1##*.}" = scd ]; then
+    if ! scdoc <"$1" >"$out/page.1"; then
+      echo "man-preview: scdoc failed, keeping last good render" >&2
+      return 0
+    fi
+    page=$out/page.1
+  fi
+
+  mandoc -T html -O style=man-preview.css,man=%N.%S "$page" \
+    | sed 's|<head>|<head><script src="man-preview.js" defer></script>|' \
+    >"$out/index.html.tmp"
+  mv "$out/index.html.tmp" "$out/index.html"   # atomic, so no half-written fetch
+}
+
+# entr re-invokes this script with --render on each save
+if [ "${1:-}" = --render ]; then
+  render "$2"
+  exit 0
+fi
+
+src=${1:?usage: man-preview <file.1>}
+[ -r "$src" ] || { echo "man-preview: cannot read $src" >&2; exit 1; }
+for dep in entr python3 scdoc; do
+  command -v "$dep" >/dev/null || { echo "man-preview: needs $dep" >&2; exit 1; }
+done
+for asset in man-preview.css man-preview.js; do
+  [ -r "$dir/$asset" ] || { echo "man-preview: missing $dir/$asset" >&2; exit 1; }
+done
+
+mkdir -p "$out"
+render "$src"
+
+# port 0 lets the OS pick a free one; parse it back out of the startup line.
+# -u is required: without it python block-buffers stdout into the log file and
+# the line never arrives.
+python3 -u -m http.server --directory "$out" --bind 127.0.0.1 0 \
+  >"$out/server.log" 2>&1 &
+srv=$!
+trap 'kill $srv 2>/dev/null' EXIT
+
+port=
+for _ in $(seq 30); do
+  port=$(sed -nE 's/.*port ([0-9]+).*/\1/p' "$out/server.log")
+  [ -n "$port" ] && break
+  sleep 0.1
+done
+[ -n "$port" ] || { echo "man-preview: server did not start" >&2; exit 1; }
+
+url="http://127.0.0.1:$port/"
+open "$url"
+echo "preview: $url — edit and save; the page updates in place. ^C to stop."
+
+# watching the assets too means editing the CSS or JS also triggers a re-render
+printf '%s\n' "$src" "$dir/man-preview.css" "$dir/man-preview.js" \
+  | entr -n "$0" --render "$src"
