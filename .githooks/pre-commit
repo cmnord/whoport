@@ -12,9 +12,25 @@ set -e
 
 [ -f whoport.1.scd ] || exit 0
 
+changed() {
+  ! git diff --quiet -- "$1" ||
+    ! git diff --cached --quiet -- "$1"
+}
+
+# Avoid touching the generated page on unrelated commits, especially in fresh
+# clones where whoport.1.scd's checkout mtime is newer than the committed page.
+if ! changed whoport.1.scd && ! changed whoport.1; then
+  exit 0
+fi
+
+if ! changed whoport.1.scd; then
+  echo "pre-commit: whoport.1 is generated; edit whoport.1.scd instead" >&2
+  exit 1
+fi
+
 if ! command -v scdoc >/dev/null; then
   echo "pre-commit: scdoc not installed, cannot rebuild whoport.1" >&2
-  echo "            brew install scdoc, or commit with --no-verify" >&2
+  echo "            run ./setup.sh, or commit with --no-verify" >&2
   exit 1
 fi
 

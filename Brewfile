@@ -1,0 +1,5 @@
+brew "entr"
+brew "mandoc"
+brew "python"
+brew "scdoc"
+brew "shellcheck"

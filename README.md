@@ -40,17 +40,11 @@ compiled to roff. The generated `whoport.1` is committed so that installing the
 tool needs no build step — but it is overwritten on every build.
 
 ```
-brew install scdoc entr
-git config core.hooksPath .githooks    # one-time, per clone
+./setup.sh
 make
 ```
 
 scdoc is the syntax check — it fails loudly on malformed input.
-
-The hook in `.githooks/pre-commit` rebuilds `whoport.1` and stages it on every
-commit, so the committed page cannot drift from its source. Git does not clone
-hooks, hence the one-time `core.hooksPath` line above. To commit without it,
-`git commit --no-verify`.
 
 ### Preview while editing
 
