@@ -1,0 +1,19 @@
+# whoport uses lsof at runtime to find TCP listeners.
+lsof
+
+# Man-page checks render roff with mandoc and strip terminal formatting with col.
+mandoc
+util-linux
+
+# setup.sh downloads and unpacks pinned tools that Amazon Linux does not package.
+curl-minimal
+tar
+gzip
+xz
+
+# setup.sh builds scdoc from source because Amazon Linux does not package it.
+gcc
+make
+
+# tools/man-preview serves rendered HTML with python3's built-in HTTP server.
+python3

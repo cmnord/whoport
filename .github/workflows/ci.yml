@@ -15,7 +15,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y scdoc shellcheck mandoc
 
       - name: Lint shell scripts
-        run: shellcheck whoport tools/man-preview .githooks/pre-commit
+        run: shellcheck whoport tools/man-preview setup.sh .githooks/pre-commit
 
       - name: whoport --help exits 0
         run: ./whoport --help >/dev/null
